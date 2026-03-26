@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-web-server
+  namespace: default
+  labels:
+    app: simple-web-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: simple-web-server
+  template:
+    metadata:
+      labels:
+        app: simple-web-server
+    spec:
+      containers:
+      - name: flask-app
+        image: simple-web-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+
+        # Load ALL environment variables from the secret
+        envFrom:
+        - secretRef:
+            name: llm-config
+
+        # Alternative: Load individual env vars (commented out)
+        # env:
+        # - name: LLM_URL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: llm-config
+        #       key: LLM_URL
+        # - name: LLM_API_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: llm-config
+        #       key: LLM_API_KEY
+        # - name: LLM_MODEL
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: llm-config
+        #       key: LLM_MODEL
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
