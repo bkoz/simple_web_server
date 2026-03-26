@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: simplewebserver
+    app.kubernetes.io/component: simplewebserver
+    app.kubernetes.io/instance: simplewebserver
+  name: simplewebserver
+spec:
+  ports:
+  - port: 8000
+  selector:
+    deployment: simplewebserver
