@@ -10,7 +10,12 @@ app = Flask(__name__)
 
 # Get LLM configuration from environment variables
 LLM_API_KEY = os.getenv('LLM_API_KEY')
-LLM_URL = os.getenv('LLM_URL')
+LLM_URL = os.getenv('LLM_URL', 'http://localhost:11434')
+LLM_MODEL = os.getenv('LLM_MODEL', 'qwen3.5-2b')
+
+print(f"LLM Configuration:")
+print(f"  LLM_URL: {LLM_URL}")
+print(f"  LLM_MODEL: {LLM_MODEL}")
 
 if not LLM_API_KEY or not LLM_URL:
     print("Warning: LLM_API_KEY and LLM_URL environment variables must be set")
@@ -47,7 +52,7 @@ def chat():
 
         # Call the LLM
         response = client.chat.completions.create(
-            model=os.getenv('LLM_MODEL', 'gpt-3.5-turbo'),
+            model=LLM_MODEL,
             messages=messages,
             temperature=0.7,
             max_tokens=1000

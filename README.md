@@ -7,7 +7,7 @@ A lightweight Flask web application that provides a chat interface powered by Op
 - Interactive chat interface with conversation history
 - Support for any OpenAI-compatible LLM API
 - Configurable via environment variables
-- Docker containerization using Red Hat UBI 10 base image
+- podman containerization using Red Hat UBI 10 base image
 - Heroku deployment ready (Procfile included)
 - Responsive web interface with modern design
 - Real-time message streaming
@@ -17,7 +17,7 @@ A lightweight Flask web application that provides a chat interface powered by Op
 - **Framework**: Flask 3.0.2
 - **Language**: Python 3
 - **LLM Integration**: OpenAI Python SDK
-- **Container**: Docker with Red Hat UBI 10
+- **Container**: podman with Red Hat UBI 10
 - **Deployment**: Compatible with Heroku and other PaaS platforms
 
 ## Prerequisites
@@ -26,7 +26,7 @@ A lightweight Flask web application that provides a chat interface powered by Op
 - pip (Python package manager)
 - Access to an OpenAI-compatible LLM API (OpenAI, Azure OpenAI, local LLM, etc.)
 - API key for your chosen LLM service
-- Docker (optional, for containerized deployment)
+- podman (optional, for containerized deployment)
 
 ## Installation
 
@@ -91,20 +91,22 @@ python app.py
 
 The chatbot interface will be available at `http://localhost:8000`
 
-### Running with Docker
+### Running with podman
 
-1. Build the Docker image:
+1. Build the podman image:
 ```bash
-docker build -t ai-chatbot .
+podman build -t ai-chatbot .
 ```
 
 2. Run the container with environment variables:
 ```bash
-docker run -p 8000:8000 \
+podman run -p 8000:8000 \
   -e LLM_URL=https://api.openai.com/v1 \
   -e LLM_API_KEY=your-api-key \
   -e LLM_MODEL=gpt-3.5-turbo \
   ai-chatbot
+
+podman run -it --rm --name=simple_web_server -p8000:8000 -e LLM_URL=http://192.168.1.99:11434/v1 localhost/simplewebserver
 ```
 
 Access the chatbot at `http://localhost:8000`
