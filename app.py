@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 # Get LLM configuration from environment variables
 LLM_API_KEY = os.getenv('LLM_API_KEY')
-LLM_URL = os.getenv('LLM_URL', 'http://localhost:11434')
+LLM_URL = os.getenv('LLM_URL', 'http://localhost:11434/v1')
 LLM_MODEL = os.getenv('LLM_MODEL', 'qwen3.5-2b')
 
 print(f"LLM Configuration:")
