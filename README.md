@@ -75,18 +75,16 @@ The chatbot interface will be available at `http://localhost:8000`
 
 1. Build the podman image:
 ```bash
-podman build -t ai-chatbot .
+podman build -t simplewebserver .
 ```
 
 2. Run the container with environment variables:
 ```bash
-podman run -p 8000:8000 \
-  -e LLM_URL=https://api.openai.com/v1 \
+podman run --rm -it --name=simplewebserver -p 8000:8000 \
+  -e LLM_URL=https://api.mymodelserver.com/v1 \
   -e LLM_API_KEY=your-api-key \
-  -e LLM_MODEL=gpt-3.5-turbo \
-  ai-chatbot
-
-podman run -it --rm --name=simple_web_server -p8000:8000 -e LLM_URL=http://192.168.1.99:11434/v1 localhost/simplewebserver
+  -e LLM_MODEL=your-model \
+  simplewebserver
 ```
 
 Access the chatbot at `http://localhost:8000`
