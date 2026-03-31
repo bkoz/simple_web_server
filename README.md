@@ -49,29 +49,9 @@ cp .env.example .env
 Edit the `.env` file and set your LLM configuration:
 - `LLM_URL`: The base URL for your OpenAI-compatible API endpoint
 - `LLM_API_KEY`: Your API key for authentication
-- `LLM_MODEL`: (Optional) The model to use (defaults to gpt-3.5-turbo)
+- `LLM_MODEL`: The model to use 
 
 ### Example Configurations
-
-**OpenAI:**
-```bash
-LLM_URL=https://api.openai.com/v1
-LLM_API_KEY=sk-...
-LLM_MODEL=gpt-4
-```
-
-**Azure OpenAI:**
-```bash
-LLM_URL=https://your-resource.openai.azure.com/openai/deployments/your-deployment
-LLM_API_KEY=your-azure-key
-```
-
-**Local LLM (LM Studio):**
-```bash
-LLM_URL=http://localhost:1234/v1
-LLM_API_KEY=not-needed
-LLM_MODEL=local-model
-```
 
 **Ollama:**
 ```bash
@@ -95,33 +75,19 @@ The chatbot interface will be available at `http://localhost:8000`
 
 1. Build the podman image:
 ```bash
-podman build -t ai-chatbot .
+podman build -t simplewebserver .
 ```
 
 2. Run the container with environment variables:
 ```bash
-podman run -p 8000:8000 \
-  -e LLM_URL=https://api.openai.com/v1 \
+podman run --rm -it --name=simplewebserver -p 8000:8000 \
+  -e LLM_URL=https://api.mymodelserver.com/v1 \
   -e LLM_API_KEY=your-api-key \
-  -e LLM_MODEL=gpt-3.5-turbo \
-  ai-chatbot
-
-podman run -it --rm --name=simple_web_server -p8000:8000 -e LLM_URL=http://192.168.1.99:11434/v1 localhost/simplewebserver
+  -e LLM_MODEL=your-model \
+  simplewebserver
 ```
 
 Access the chatbot at `http://localhost:8000`
-
-### Deploying to Heroku
-
-The project includes a `Procfile` for Heroku deployment:
-
-```bash
-heroku create your-app-name
-heroku config:set LLM_URL=https://api.openai.com/v1
-heroku config:set LLM_API_KEY=your-api-key
-heroku config:set LLM_MODEL=gpt-3.5-turbo
-git push heroku main
-```
 
 ## Project Structure
 
@@ -139,27 +105,10 @@ simple_web_server/
 
 ## Configuration
 
-### Required Environment Variables
-
-- `LLM_URL`: Base URL for the OpenAI-compatible API endpoint
-- `LLM_API_KEY`: API key for authentication
-
-### Optional Environment Variables
-
-- `LLM_MODEL`: Model to use (defaults to gpt-3.5-turbo)
-
 ### Server Configuration
 
 - **Port**: 8000 (configurable in `app.py`)
 - **Host**: 0.0.0.0 (listens on all network interfaces)
-
-## How to Use
-
-1. Open the chatbot interface at `http://localhost:8000`
-2. Type your message in the input field at the bottom
-3. Press Enter or click the "Send" button
-4. The assistant will respond to your message
-5. Continue the conversation - the chat history is maintained during your session
 
 ## Troubleshooting
 
