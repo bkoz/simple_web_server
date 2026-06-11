@@ -23,6 +23,53 @@
             flex-direction: column;
             height: 80vh;
         }
+        .qr-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+        .qr-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        #url-input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #generate-qr-button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #generate-qr-button:hover {
+            transform: scale(1.05);
+        }
+        #qr-display {
+            text-align: center;
+            min-height: 50px;
+        }
+        #qr-display img {
+            max-width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .qr-url {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
         h1 {
             color: #667eea;
             text-align: center;
@@ -107,6 +154,15 @@
 <body>
     <div class='container'>
         <h1>LLM Chatter</h1>
+
+        <div class='qr-section'>
+            <div class='qr-input-container'>
+                <input type='text' id='url-input' placeholder='Enter URL to generate QR code...' autocomplete='off'>
+                <button id='generate-qr-button'>Generate QR</button>
+            </div>
+            <div id='qr-display'></div>
+        </div>
+
         <div id='chat-container'></div>
         <div id='input-container'>
             <input type='text' id='message-input' placeholder='Type your message...' autocomplete='off'>
@@ -194,6 +250,51 @@
 
         // Focus input on load
         messageInput.focus();
+
+        // QR Code functionality
+        const urlInput = document.getElementById('url-input');
+        const generateQrButton = document.getElementById('generate-qr-button');
+        const qrDisplay = document.getElementById('qr-display');
+
+        async function generateQRCode() {
+            const url = urlInput.value.trim();
+            if (!url) {
+                qrDisplay.innerHTML = '<p style="color: #c62828;">Please enter a URL</p>';
+                return;
+            }
+
+            qrDisplay.innerHTML = '<p style="color: #666;">Generating QR code...</p>';
+
+            try {
+                const response = await fetch('/qr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    qrDisplay.innerHTML = `<p style="color: #c62828;">${error.error || 'Error generating QR code'}</p>`;
+                } else {
+                    const data = await response.json();
+                    qrDisplay.innerHTML = `
+                        <img src="${data.qr_code}" alt="QR Code">
+                        <div class="qr-url">QR code for: ${data.url}</div>
+                    `;
+                }
+            } catch (error) {
+                qrDisplay.innerHTML = `<p style="color: #c62828;">Network error: ${error.message}</p>`;
+            }
+        }
+
+        generateQrButton.addEventListener('click', generateQRCode);
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                generateQRCode();
+            }
+        });
     </script>
 </body>
 </html>

@@ -1,8 +1,11 @@
 # Simple Flask chatbot with OpenAI-compatible LLM
 import os
+import io
+import base64
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from dotenv import load_dotenv
+import qrcode
 
 load_dotenv()
 
@@ -67,6 +70,43 @@ def chat():
     except Exception as e:
         return jsonify({
             'error': f'Error communicating with LLM: {str(e)}'
+        }), 500
+
+@app.route('/qr', methods=['POST'])
+def generate_qr():
+    try:
+        data = request.json
+        url = data.get('url', '')
+
+        if not url:
+            return jsonify({'error': 'No URL provided'}), 400
+
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(url)
+        qr.make(fit=True)
+
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        # Convert to base64
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+
+        return jsonify({
+            'qr_code': f'data:image/png;base64,{img_str}',
+            'url': url
+        })
+
+    except Exception as e:
+        return jsonify({
+            'error': f'Error generating QR code: {str(e)}'
         }), 500
 
 if __name__ == '__main__':
