@@ -1,25 +1,35 @@
 # Dockerfile for simple web server
-FROM --platform=linux/amd64 registry.access.redhat.com/ubi9/python-311
 
-# Set up working directory
+# Build stage - uses full Python image with package manager
+FROM --platform=linux/amd64 quay.io/hummingbird/python:3.14-builder AS builder
+
+USER root
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
+# Runtime stage - distroless Python image
+FROM --platform=linux/amd64 quay.io/hummingbird/python:latest
+
+WORKDIR /app
+
+# Copy Python packages from builder (both lib and lib64 for compiled extensions)
+COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
+COPY --from=builder /usr/local/lib64/python3.14/site-packages /usr/local/lib64/python3.14/site-packages
+
+# Copy application files
 COPY app.py .
 COPY templates/ templates/
 
-# Expose port 8000
-EXPOSE 8000
-
-# Run time env vars
+# Runtime environment variables
 ENV LLM_URL=http://localhost:11434/v1
 ENV LLM_API_KEY=<apikey_goes_here>
 ENV LLM_MODEL=qwen3.5:2b
 
+# Expose port 8000
+EXPOSE 8000
 
 # Run the application
 CMD ["python3", "app.py"]
