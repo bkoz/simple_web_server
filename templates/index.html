@@ -331,8 +331,8 @@
         // Check database status on page load
         checkDatabaseStatus();
 
-        // Refresh database status every 30 seconds
-        setInterval(checkDatabaseStatus, 30000);
+        // Refresh database status every 5 seconds (server uses cached data, so no performance hit)
+        setInterval(checkDatabaseStatus, 5000);
 
         // QR Code functionality
         const urlInput = document.getElementById('url-input');

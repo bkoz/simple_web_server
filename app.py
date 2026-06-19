@@ -10,6 +10,7 @@ import psycopg
 from psycopg import OperationalError
 import time
 import threading
+from threading import Lock
 
 load_dotenv()
 
@@ -91,6 +92,11 @@ db_connection = test_db_connection()
 # Global flag to track if database is initialized
 db_initialized = False
 
+# Cached visit count and lock for thread safety
+cached_visit_count = 0
+visit_count_lock = Lock()
+last_visit_count_update = 0
+
 def init_database_once():
     """Attempt to initialize database tables once"""
     global db_initialized
@@ -161,6 +167,60 @@ def init_database_background():
     thread = threading.Thread(target=init_database_with_retry, daemon=True)
     thread.start()
 
+def update_visit_count_cache():
+    """Update the cached visit count from database"""
+    global cached_visit_count, last_visit_count_update
+
+    if not POSTGRES_PASSWORD or not db_initialized:
+        return
+
+    try:
+        connection = psycopg.connect(
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+            dbname=POSTGRES_DB,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            connect_timeout=3
+        )
+
+        cursor = connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM connections")
+        count = cursor.fetchone()[0]
+        cursor.close()
+        connection.close()
+
+        # Thread-safe update
+        with visit_count_lock:
+            cached_visit_count = count
+            last_visit_count_update = time.time()
+
+    except Exception as e:
+        print(f"⚠️  Failed to update visit count cache: {str(e)}")
+
+def visit_count_updater_loop():
+    """Background thread that periodically updates visit count"""
+    # Wait for database to be initialized
+    while not db_initialized:
+        time.sleep(1)
+
+    # Update cache every 5 seconds
+    update_interval = 5
+
+    while True:
+        try:
+            update_visit_count_cache()
+        except Exception as e:
+            print(f"⚠️  Error in visit count updater: {str(e)}")
+
+        time.sleep(update_interval)
+
+def start_visit_count_updater():
+    """Start background thread for visit count updates"""
+    thread = threading.Thread(target=visit_count_updater_loop, daemon=True)
+    thread.start()
+    print("📊 Visit count updater started (updates every 5 seconds)")
+
 def log_connection(ip_address):
     """Log a user connection to the database"""
     if not POSTGRES_PASSWORD:
@@ -203,16 +263,17 @@ def get_db_status():
             connect_timeout=3
         )
 
-        # Get visit count - handle case where table doesn't exist yet
+        # Get visit count directly from database
         cursor = connection.cursor()
+        visit_count = 0
+        message = 'Connected'
+
         try:
             cursor.execute("SELECT COUNT(*) FROM connections")
             visit_count = cursor.fetchone()[0]
-            message = 'Connected'
         except Exception as table_error:
             # Table doesn't exist yet - initialization in progress
             if 'does not exist' in str(table_error):
-                visit_count = 0
                 message = 'Connected (initializing...)'
             else:
                 raise
@@ -350,5 +411,16 @@ def generate_qr():
             'error': f'Error generating QR code: {str(e)}'
         }), 500
 
+def init_app():
+    """Initialize application (called once per worker when using Gunicorn)"""
+    print("🚀 Initializing worker process...")
+    # Background threads are already started at module level
+    # Each worker gets its own background threads
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    # Development server (not for production)
+    print("⚠️  Running development server - use Gunicorn for production!")
+    app.run(host='0.0.0.0', port=8000, threaded=True)
+else:
+    # Production mode with Gunicorn
+    init_app()

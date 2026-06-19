@@ -21,15 +21,17 @@ COPY --from=builder /usr/local/lib64/python3.14/site-packages /usr/local/lib64/p
 
 # Copy application files
 COPY app.py .
+COPY gunicorn_config.py .
 COPY templates/ templates/
 
 # Runtime environment variables
 ENV LLM_URL=http://localhost:11434/v1
 ENV LLM_API_KEY=<apikey_goes_here>
 ENV LLM_MODEL=qwen3.5:2b
+ENV GUNICORN_WORKERS=4
 
 # Expose port 8000
 EXPOSE 8000
 
-# Run the application
-CMD ["python3", "app.py"]
+# Run the application with Gunicorn
+CMD ["python3", "-m", "gunicorn", "--config", "gunicorn_config.py", "app:app"]
