@@ -11,8 +11,17 @@ from psycopg import OperationalError
 import time
 import threading
 from threading import Lock
+import requests
+import logging
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -40,6 +49,94 @@ POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
 POSTGRES_DB = os.getenv('POSTGRES_DB', 'postgres')
 POSTGRES_USER = os.getenv('POSTGRES_USER', 'postgres')
 POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+
+def test_model_inference():
+    """Test LLM model inference and print status"""
+    print("\n" + "="*50)
+    print("LLM Model Inference Test")
+    print("="*50)
+    print(f"LLM URL: {LLM_URL}")
+    print(f"API Key: {'Set' if LLM_API_KEY else 'Not set'}")
+    print("-"*50)
+
+    logger.info("Starting LLM model inference test")
+    logger.info(f"LLM URL: {LLM_URL}")
+
+    if not LLM_URL or not LLM_API_KEY:
+        error_msg = "LLM client not initialized (check LLM_API_KEY and LLM_URL)"
+        print(f"❌ Inference Status: FAILED")
+        print(f"Error: {error_msg}")
+        print("="*50 + "\n")
+        logger.error(f"Inference test failed: {error_msg}")
+        return None
+
+    try:
+        # Query available models from the v1/models endpoint
+        models_url = f"{LLM_URL.rstrip('/')}/models"
+        print(f"Querying models endpoint: {models_url}")
+        logger.info(f"Querying models endpoint: {models_url}")
+
+        headers = {"Authorization": f"Bearer {LLM_API_KEY}"}
+        response = requests.get(models_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        models_data = response.json()
+        logger.info(f"Models API response: {models_data}")
+
+        # Extract model IDs from the response
+        available_models = [model['id'] for model in models_data.get('data', [])]
+
+        if not available_models:
+            error_msg = "No models available on the server"
+            print(f"❌ Inference Status: FAILED")
+            print(f"Error: {error_msg}")
+            print("="*50 + "\n")
+            logger.error(f"Inference test failed: {error_msg}")
+            return None
+
+        # Use the first available model
+        test_model = available_models[0]
+        print(f"Available models: {', '.join(available_models)}")
+        print(f"Using model for test: {test_model}")
+        logger.info(f"Available models: {available_models}")
+        logger.info(f"Selected model for inference test: {test_model}")
+        print("-"*50)
+
+        # Perform a simple test inference
+        if not client:
+            client_local = OpenAI(api_key=LLM_API_KEY, base_url=LLM_URL)
+        else:
+            client_local = client
+
+        logger.info(f"Sending test inference request with model: {test_model}")
+        test_response = client_local.chat.completions.create(
+            model=test_model,
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=10,
+            temperature=0.0
+        )
+
+        response_text = test_response.choices[0].message.content
+        print("✅ Inference Status: SUCCESSFUL")
+        print(f"Test response: {response_text[:50]}..." if len(response_text) > 50 else f"Test response: {response_text}")
+        print("="*50 + "\n")
+        logger.info(f"Inference test successful. Response: {response_text}")
+        return True
+
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Failed to query models endpoint: {str(e)}"
+        print(f"❌ Inference Status: FAILED")
+        print(f"Error: {error_msg}")
+        print("="*50 + "\n")
+        logger.error(f"Inference test failed: {error_msg}")
+        return None
+    except Exception as e:
+        error_msg = f"Error during inference test: {str(e)}"
+        print(f"❌ Inference Status: FAILED")
+        print(f"Error: {error_msg}")
+        print("="*50 + "\n")
+        logger.error(f"Inference test failed: {error_msg}", exc_info=True)
+        return None
 
 def test_db_connection():
     """Test PostgreSQL database connection and print status"""
@@ -85,6 +182,9 @@ def test_db_connection():
         print(f"Error: {str(e)}")
         print("="*50 + "\n")
         return None
+
+# Test model inference on startup (before database test)
+model_inference = test_model_inference()
 
 # Test database connection on startup
 db_connection = test_db_connection()
