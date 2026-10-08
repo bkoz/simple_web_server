@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplewebserver
+  labels:
+    app: simplewebserver
+    app.kubernetes.io/name: simplewebserver
+    app.kubernetes.io/component: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simplewebserver
+  template:
+    metadata:
+      labels:
+        app: simplewebserver
+    spec:
+      containers:
+      # PostgreSQL Container
+      - name: postgresql
+        image: quay.io/hummingbird/postgresql:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5432
+          name: postgresql
+          protocol: TCP
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_DB
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        startupProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          failureThreshold: 10
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $POSTGRES_USER && psql -U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT 1' > /dev/null
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      # Web Server Container
+      - name: webserver
+        image: quay.io/bkozdemb/simplewebserver:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: DATABASE_URL
+          value: postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
+        - name: POSTGRES_HOST
+          value: localhost
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_DB
+        - name: LLM_URL
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: LLM_URL
+        - name: LLM_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: LLM_MODEL
+        - name: LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: LLM_API_KEY
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 12
+          timeoutSeconds: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+      volumes:
+      - name: postgresql-data
+        emptyDir: {}
